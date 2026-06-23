@@ -53,5 +53,5 @@ app.use("/api/admin/inventory", inventoryRoutes);
 
 const port = process.env.API_PORT || 5000;
 app.listen(port, () => {
-    console.log(`Server API running on http://localhost:${port}`);
+    console.log(`Server API running on ${port}`);
 });
