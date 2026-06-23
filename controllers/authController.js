@@ -27,10 +27,11 @@ export const registerUser = async (req, res) => {
         const userId = result.insertId;
         const token = generateToken(userId);
 
+        const isProduction = process.env.NODE_ENV === "production";
         res.cookie("token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
             path: "/",
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
@@ -65,10 +66,11 @@ export const loginUser = async (req, res) => {
 
         const token = generateToken(user.id);
 
+        const isProduction = process.env.NODE_ENV === "production";
         res.cookie("token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
             path: "/",
             maxAge: 30 * 24 * 60 * 60 * 1000,
         });
@@ -86,10 +88,11 @@ export const loginUser = async (req, res) => {
 };
 
 export const logoutUser = (req, res) => {
+    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("token", "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
         path: "/",
         expires: new Date(0),
     });
