@@ -26,7 +26,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-const origins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",") : ["http://localhost:8080", "http://localhost:5173", "http://localhost:5174"];
+const origins = [process.env.FRONTEND_URL, "http://localhost:8080", "http://localhost:5173", "http://localhost:5174"];
 
 app.use(cors({
     origin: origins,
