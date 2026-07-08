@@ -2,7 +2,7 @@ import pool from "../config/db.js";
 
 export const getProducts = async (req, res) => {
     try {
-        const [rows] = await pool.query("SELECT * FROM products LIMIT 100");
+        const [rows] = await pool.query("SELECT * FROM products");
         res.json({ ok: true, rows });
     } catch (err) {
         console.error(err);
