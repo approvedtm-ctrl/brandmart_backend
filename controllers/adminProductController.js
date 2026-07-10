@@ -216,3 +216,28 @@ export const deleteProduct = async (req, res) => {
         res.status(500).json({ ok: false, error: "Failed to delete product" });
     }
 };
+
+/**
+ * @desc Upload product image and return its relative public path
+ * @route POST /api/admin/products/upload?category=<slug>
+ */
+export const uploadProductImage = (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ ok: false, message: "No file uploaded" });
+        }
+
+        // Map the destination folder back to the URL prefix served statically
+        // e.g. file saved at public/Freeze/xxx.jpg → imageUrl = /Freeze/xxx.jpg
+        const absolutePath = req.file.path.replace(/\\/g, "/");
+        const publicIndex = absolutePath.lastIndexOf("/public/");
+        const imageUrl = publicIndex !== -1
+            ? absolutePath.substring(publicIndex + "/public".length)
+            : "/" + req.file.filename;
+
+        res.json({ ok: true, imageUrl });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ ok: false, error: "Failed to upload image" });
+    }
+};

@@ -35,6 +35,12 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
+// Fallback static serving of category folders from the public/ directory
+const foldersToServe = ["Mobiles", "Ac's", "Washing machine", "Freeze", "Solar_Panel"];
+foldersToServe.forEach((folder) => {
+    app.use(`/${folder}`, express.static(path.join(__dirname, "../public", folder)));
+});
+
 // Existing routes
 app.use("/api", productRoutes);
 app.use("/api/auth", authRoutes);
