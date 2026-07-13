@@ -52,11 +52,19 @@ export const createOrder = async (req, res) => {
 
         // Insert order
         const [orderResult] = await conn.execute(
-            `INSERT INTO orders (user_id, total_amount, status, payment_status)
-             VALUES (?, ?, 'pending', 'pending')`,
+            `INSERT INTO orders (user_id, total_amount, status, payment_status, payment_stage, initial_paid, final_paid, expires_at)
+             VALUES (?, ?, 'pending', 'pending', 'initial', FALSE, FALSE, NULL)`,
             [userId, totalAmount]
         );
         const orderId = orderResult.insertId;
+
+        // Generate unique order number: ORD-YYYYMMDD-XXXXX
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const orderNumber = `ORD-${yyyy}${mm}${dd}-${String(orderId).padStart(5, '0')}`;
+        await conn.execute("UPDATE orders SET order_number = ? WHERE id = ?", [orderNumber, orderId]);
 
         // Insert order items
         for (const item of cartItems) {
@@ -94,21 +102,35 @@ export const createOrder = async (req, res) => {
         }
 
         // Record payment
-        await conn.execute(
-            `INSERT INTO payments (order_id, payment_method, amount, status)
-             VALUES (?, ?, ?, ?)`,
-            [
-                orderId,
-                payment_method,
-                totalAmount,
-                payment_method === "cod" ? "pending" : "pending",
-            ]
-        );
+        if (payment_method === "upi") {
+            // For UPI, first payment stage is ₹1
+            const initialAmount = 1.00;
+            const txnRef = `TXN-INIT-${orderNumber}`;
+            await conn.execute(
+                `INSERT INTO payments (order_id, payment_method, amount, status, payment_type, transaction_reference)
+                 VALUES (?, 'upi', ?, 'pending', 'initial', ?)`,
+                [
+                    orderId,
+                    initialAmount,
+                    txnRef
+                ]
+            );
+        } else {
+            await conn.execute(
+                `INSERT INTO payments (order_id, payment_method, amount, status, payment_type)
+                 VALUES (?, ?, ?, 'pending', 'initial')`,
+                [
+                    orderId,
+                    payment_method,
+                    totalAmount
+                ]
+            );
+        }
 
         // Update order payment_status if card (simulated success)
         if (payment_method === "card") {
             await conn.execute(
-                `UPDATE orders SET status = 'paid', payment_status = 'paid' WHERE id = ?`,
+                `UPDATE orders SET status = 'paid', payment_status = 'paid', initial_paid = TRUE, final_paid = TRUE WHERE id = ?`,
                 [orderId]
             );
             await conn.execute(
@@ -125,7 +147,7 @@ export const createOrder = async (req, res) => {
         res.status(201).json({
             message: "Order placed successfully",
             orderId,
-            orderNumber: `BM-${orderId.toString().padStart(6, "0")}`,
+            orderNumber,
             totalAmount,
         });
     } catch (error) {
@@ -143,8 +165,9 @@ export const createOrder = async (req, res) => {
 export const getMyOrders = async (req, res) => {
     try {
         const [orders] = await pool.execute(
-            `SELECT o.id, o.total_amount, o.status, o.payment_status, o.created_at
+            `SELECT o.id, o.order_number, o.total_amount, o.status, o.payment_status, o.payment_stage, o.initial_paid, o.final_paid, o.expires_at, o.created_at, p.payment_method
              FROM orders o
+             LEFT JOIN payments p ON p.order_id = o.id AND p.payment_type = 'initial'
              WHERE o.user_id = ?
              ORDER BY o.created_at DESC`,
             [req.user.id]
@@ -161,7 +184,7 @@ export const getMyOrders = async (req, res) => {
                 [order.id]
             );
             order.items = items;
-            order.orderNumber = `BM-${order.id.toString().padStart(6, "0")}`;
+            order.orderNumber = order.order_number || `BM-${order.id.toString().padStart(6, "0")}`;
         }
 
         res.json(orders);
@@ -179,7 +202,7 @@ export const getOrderById = async (req, res) => {
         const [orders] = await pool.execute(
             `SELECT o.*, p.payment_method, p.transaction_id
              FROM orders o
-             LEFT JOIN payments p ON p.order_id = o.id
+             LEFT JOIN payments p ON p.order_id = o.id AND p.payment_type = 'initial'
              WHERE o.id = ? AND o.user_id = ?`,
             [req.params.id, req.user.id]
         );
@@ -198,7 +221,7 @@ export const getOrderById = async (req, res) => {
         );
 
         order.items = items;
-        order.orderNumber = `BM-${order.id.toString().padStart(6, "0")}`;
+        order.orderNumber = order.order_number || `BM-${order.id.toString().padStart(6, "0")}`;
 
         res.json(order);
     } catch (error) {

@@ -14,6 +14,8 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import { initPaymentCron } from "./cron/paymentCron.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
@@ -56,6 +58,10 @@ app.use("/api/products/:productId/reviews", reviewRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/admin/inventory", inventoryRoutes);
+app.use("/api/payment", paymentRoutes);
+
+// Start cron tasks
+initPaymentCron();
 
 const port = process.env.API_PORT || 5000;
 app.listen(port, () => {
