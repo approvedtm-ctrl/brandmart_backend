@@ -177,9 +177,10 @@ export const verifyPayment = async (req, res) => {
         // 5. Update order details based on stage
         if (paymentStage === "initial") {
             // Set expires_at = NOW() + 15 minutes for countdown
+            // Use status = 'partial' so the frontend knows final payment is still pending
             await conn.execute(
                 `UPDATE orders 
-                 SET initial_paid = TRUE, payment_status = 'paid', status = 'paid', expires_at = DATE_ADD(NOW(), INTERVAL 15 MINUTE)
+                 SET initial_paid = TRUE, payment_status = 'partial', status = 'partial', expires_at = DATE_ADD(NOW(), INTERVAL 15 MINUTE)
                  WHERE id = ?`,
                 [orderId]
             );
