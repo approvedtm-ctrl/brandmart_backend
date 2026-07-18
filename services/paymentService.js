@@ -66,17 +66,11 @@ class PaymentService {
             };
         }
 
-        // Check if already paid for the current stage
-        if (paymentStage === "initial" && order.initial_paid) {
+        // Check if already fully paid
+        if (order.final_paid) {
             return {
                 success: false,
-                message: "Initial payment for this order has already been verified."
-            };
-        }
-        if (paymentStage === "final" && order.final_paid) {
-            return {
-                success: false,
-                message: "Final payment for this order has already been verified."
+                message: "Payment for this order has already been verified and completed."
             };
         }
 

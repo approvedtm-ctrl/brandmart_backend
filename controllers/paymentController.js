@@ -61,7 +61,7 @@ export const getPaymentStatus = async (req, res) => {
     }
 };
 
-// @desc  Create or retrieve initial payment details (₹1)
+// @desc  Create or retrieve payment details (full order amount)
 // @route POST /api/payment/create
 // @access Protected
 export const createPayment = async (req, res) => {
@@ -84,14 +84,10 @@ export const createPayment = async (req, res) => {
             return res.status(400).json({ message: "Order has already been cancelled" });
         }
 
-        if (order.initial_paid) {
-            return res.status(400).json({ message: "Initial payment already completed" });
-        }
-
         const amount = Number(order.total_amount);
         const txnRef = `TXN-INIT-${order.order_number}`;
 
-        // Check if there is already a pending initial payment
+        // Reuse or create the pending payment record, always at the full order amount
         const [existing] = await pool.execute(
             "SELECT * FROM payments WHERE order_id = ? AND payment_type = 'initial' AND status = 'pending'",
             [orderId]
@@ -100,6 +96,11 @@ export const createPayment = async (req, res) => {
         let paymentId;
         if (existing.length > 0) {
             paymentId = existing[0].id;
+            // Ensure the stored amount reflects the full order amount (in case an old ₹1 record exists)
+            await pool.execute(
+                "UPDATE payments SET amount = ? WHERE id = ?",
+                [amount, paymentId]
+            );
         } else {
             const [result] = await pool.execute(
                 `INSERT INTO payments (order_id, payment_method, amount, status, payment_type, transaction_reference)

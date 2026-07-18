@@ -27,9 +27,23 @@ export const createOrder = async (req, res) => {
             return res.status(400).json({ message: "Cart is empty" });
         }
 
-        // Resolve coupon discount
+        // Calculate total subtotal
+        const subtotal = cartItems.reduce(
+            (sum, item) => sum + Number(item.price) * item.quantity,
+            0
+        );
+
+        // Resolve coupon/first-order discount
         let discountAmount = 0;
-        if (coupon_code) {
+        const [existingOrders] = await conn.execute(
+            "SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND status != 'cancelled'",
+            [userId]
+        );
+        const isFirstOrder = existingOrders[0].count === 0;
+
+        if (isFirstOrder) {
+            discountAmount = subtotal * 0.70;
+        } else if (coupon_code) {
             const [coupons] = await conn.execute(
                 `SELECT discount FROM coupons
                  WHERE code = ? AND active = TRUE
@@ -41,12 +55,7 @@ export const createOrder = async (req, res) => {
             }
         }
 
-        // Calculate total
-        const subtotal = cartItems.reduce(
-            (sum, item) => sum + Number(item.price) * item.quantity,
-            0
-        );
-        const tax = subtotal * 0.1;
+        const tax = (subtotal - discountAmount) * 0.1;
         const shipping = subtotal > 500 ? 0 : 50;
         const totalAmount = Math.max(0, subtotal - discountAmount) + tax + shipping;
 
