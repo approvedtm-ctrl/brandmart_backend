@@ -88,7 +88,7 @@ export const createPayment = async (req, res) => {
             return res.status(400).json({ message: "Initial payment already completed" });
         }
 
-        const amount = 1.00;
+        const amount = Number(order.total_amount);
         const txnRef = `TXN-INIT-${order.order_number}`;
 
         // Check if there is already a pending initial payment
@@ -151,7 +151,7 @@ export const verifyPayment = async (req, res) => {
 
         // 2. Determine payment stage and expected amount
         let paymentStage = "initial";
-        let expectedAmount = 1.00;
+        let expectedAmount = Number(order.total_amount);
 
         if (order.initial_paid) {
             paymentStage = "final";
@@ -176,11 +176,10 @@ export const verifyPayment = async (req, res) => {
 
         // 5. Update order details based on stage
         if (paymentStage === "initial") {
-            // Set expires_at = NOW() + 15 minutes for countdown
-            // Use status = 'partial' so the frontend knows final payment is still pending
+            // If they pay the full amount at once, both initial and final are marked paid.
             await conn.execute(
                 `UPDATE orders 
-                 SET initial_paid = TRUE, payment_status = 'partial', status = 'partial', expires_at = DATE_ADD(NOW(), INTERVAL 15 MINUTE)
+                 SET initial_paid = TRUE, final_paid = TRUE, payment_status = 'COMPLETED', status = 'processing', payment_stage = 'final'
                  WHERE id = ?`,
                 [orderId]
             );

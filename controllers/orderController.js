@@ -103,15 +103,14 @@ export const createOrder = async (req, res) => {
 
         // Record payment
         if (payment_method === "upi") {
-            // For UPI, first payment stage is ₹1
-            const initialAmount = 1.00;
+            // For UPI, pay the full amount at once
             const txnRef = `TXN-INIT-${orderNumber}`;
             await conn.execute(
                 `INSERT INTO payments (order_id, payment_method, amount, status, payment_type, transaction_reference)
                  VALUES (?, 'upi', ?, 'pending', 'initial', ?)`,
                 [
                     orderId,
-                    initialAmount,
+                    totalAmount,
                     txnRef
                 ]
             );
