@@ -102,3 +102,64 @@ export const logoutUser = (req, res) => {
 export const getMe = async (req, res) => {
     res.json(req.user);
 };
+
+export const updateProfile = async (req, res) => {
+    const { name, email, password, currentPassword } = req.body;
+    try {
+        if (email && email !== req.user.email) {
+            const [existing] = await pool.execute(
+                "SELECT id FROM users WHERE email = ? AND id != ?",
+                [email, req.user.id]
+            );
+            if (existing.length > 0) {
+                return res.status(400).json({ message: "Email is already in use" });
+            }
+        }
+
+        let query = "UPDATE users SET name = ?, email = ?";
+        let params = [name || req.user.name, email || req.user.email];
+
+        if (password) {
+            if (!currentPassword) {
+                return res.status(400).json({ message: "Current password is required to change password" });
+            }
+
+            const [userRow] = await pool.execute(
+                "SELECT password FROM users WHERE id = ?",
+                [req.user.id]
+            );
+
+            if (userRow.length === 0) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            const isMatch = await bcrypt.compare(currentPassword, userRow[0].password);
+            if (!isMatch) {
+                return res.status(400).json({ message: "Incorrect current password" });
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+            query += ", password = ?";
+            params.push(hashedPassword);
+        }
+
+        query += " WHERE id = ?";
+        params.push(req.user.id);
+
+        await pool.execute(query, params);
+
+        res.json({
+            message: "Profile updated successfully",
+            user: {
+                id: req.user.id,
+                name: name || req.user.name,
+                email: email || req.user.email,
+                role: req.user.role
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error during profile update" });
+    }
+};
+
