@@ -21,6 +21,7 @@ export const sendOTPMail = async (email, otp, purpose = "verification") => {
                 host: process.env.SMTP_HOST,
                 port: Number(process.env.SMTP_PORT) || 465,
                 secure: process.env.SMTP_SECURE === "true",
+                family: 4, // Force IPv4 — prevents ENETUNREACH on hosts without IPv6 routing
                 auth: {
                     user: process.env.SMTP_USER,
                     pass: process.env.SMTP_PASS,
