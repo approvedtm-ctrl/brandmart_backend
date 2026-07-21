@@ -19,8 +19,9 @@ export const sendOTPMail = async (email, otp, purpose = "verification") => {
         try {
             const transporter = nodemailer.createTransport({
                 host: process.env.SMTP_HOST,
-                port: Number(process.env.SMTP_PORT) || 465,
-                secure: process.env.SMTP_SECURE === "true",
+                port: Number(process.env.SMTP_PORT) || 587,
+                secure: process.env.SMTP_SECURE === "true", // false for port 587 (STARTTLS)
+                requireTLS: true, // Force TLS upgrade — never send credentials in plaintext
                 family: 4, // Force IPv4 — prevents ENETUNREACH on hosts without IPv6 routing
                 auth: {
                     user: process.env.SMTP_USER,
